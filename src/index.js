@@ -12,26 +12,26 @@ searchRef.addEventListener('submit', onSearch);
 loadMoreRef.addEventListener('click', onLoadMore);
 
 let searchQuery = '';
+let page = 0;
+let totalHits = 0;
 
 function onSearch(evt) {
   loadMoreRef.style.display = 'none';
   searchQuery = evt.currentTarget.elements.searchQuery.value;
+  resetPage();
 
   evt.preventDefault();
+
+  resetGallery();
 
   getPictures()
     .then(renderGalleryCard)
     // .then(pictures => console.log(pictures))
     .catch(error => console.log(error));
-
-  setTimeout(() => {
-    loadMoreRef.style.display = 'inline-block';
-  }, 1000);
 }
 
 const BASE_URL = `https://pixabay.com/api/?key=34603447-420b9507c9dfa301393340c59`;
 const PER_PAGE = `40`;
-let page = 0;
 
 async function getPictures() {
   page += 1;
@@ -39,7 +39,7 @@ async function getPictures() {
     const response = await axios.get(
       `${BASE_URL}&q=${searchQuery}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${page}`
     );
-    console.log(response.data.totalHits);
+    totalHits = response.data.totalHits;
     return response.data.hits;
   } catch (error) {
     console.error(error);
@@ -47,18 +47,24 @@ async function getPictures() {
 }
 
 function renderGalleryCard(pictures) {
-  const galleryMarkup = pictures
-    .map(
-      ({
-        webformatURL,
-        largeImageURL,
-        tags,
-        likes,
-        views,
-        comments,
-        downloads,
-      }) => {
-        return `<div class="photo-card">
+  if (pictures.length === 0) {
+    console.log(pictures.length);
+    Notiflix.Notify.info(
+      `Sorry, there are no images matching your search query. Please try again.`
+    );
+  } else {
+    const galleryMarkup = pictures
+      .map(
+        ({
+          webformatURL,
+          largeImageURL,
+          tags,
+          likes,
+          views,
+          comments,
+          downloads,
+        }) => {
+          return `<div class="photo-card">
   <img src="${webformatURL}" alt="${tags}" loading="lazy" class="photo-card__img"/>
   <div class="info">
     <p class="info-item">
@@ -75,16 +81,45 @@ function renderGalleryCard(pictures) {
     </p>
   </div>
 </div>`;
-      }
-    )
-    .join('');
-  galleryRef.insertAdjacentHTML('beforeend', galleryMarkup);
+        }
+      )
+      .join('');
+
+    galleryRef.insertAdjacentHTML('beforeend', galleryMarkup);
+    showButton();
+    totalHitsCheck();
+  }
+}
+
+function totalHitsCheck() {
+  if (totalHits < page * PER_PAGE) {
+    hideButton();
+  }
 }
 
 function onLoadMore() {
   getPictures()
     .then(renderGalleryCard)
     .catch(error => console.log(error));
+}
+
+function showButton() {
+  loadMoreRef.style.display = 'inline-block';
+}
+
+function hideButton() {
+  loadMoreRef.style.display = 'none';
+  Notiflix.Notify.failure(
+    `We're sorry, but you've reached the end of search results.`
+  );
+}
+
+function resetGallery() {
+  galleryRef.innerHTML = '';
+}
+
+function resetPage() {
+  page = 0;
 }
 
 // function onInput(evt) {
